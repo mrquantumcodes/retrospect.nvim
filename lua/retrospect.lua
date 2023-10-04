@@ -255,8 +255,8 @@ M.DeleteSession = function()
     if confirm == "yes" then
       local sessions = {} -- Table to store session names
 
-      vim.fn.delete(session_dir .. "/" .. sname)
-      print(session_dir .. "/" .. sname)
+      vim.fn.delete(sname)
+      -- print(session_dir .. "/" .. sname)
 
       -- Get a list of .vim files in the session directory
       local vim_files = vim.fn.glob(session_dir .. "*.vim", true, true)
