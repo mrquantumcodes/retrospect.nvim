@@ -245,6 +245,7 @@ end
 
 M.DeleteSession = function()
   local sname = vim.fn.eval('v:this_session'):gsub(session_dir, "")
+  print("\n" .. sname .. "\n")
 
   if sname == "" or sname == nil then
     print("You must open a session to delete it")
@@ -273,7 +274,7 @@ M.DeleteSession = function()
         end
         file:close()
 
-        print("Session Deleted Successfully")
+        print("\nSession Deleted Successfully")
       else
         print("Error: Could not open " .. session_dir .. "sessions_list.txt" .. " for writing.")
       end
