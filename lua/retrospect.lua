@@ -272,7 +272,7 @@ function DeleteSession()
 end
 
 vim.cmd(
-[[command! DelSession lua vim.fn.input("Enter \"yes\" to delete: ") == yes and DeleteSession() or print("Session deletion cancelled") ]])
+[[command! DelSession lua vim.fn.input("Enter \"yes\" to delete: ") == "yes" and DeleteSession() or print("Session deletion cancelled") ]])
 
 
 function GotoSettings()
