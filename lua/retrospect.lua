@@ -272,6 +272,8 @@ M.DeleteSession = function()
           file:write(session .. "\n")
         end
         file:close()
+
+        print("Session Deleted Successfully")
       else
         print("Error: Could not open " .. session_dir .. "sessions_list.txt" .. " for writing.")
       end
