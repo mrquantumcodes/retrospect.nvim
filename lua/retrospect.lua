@@ -239,40 +239,46 @@ M.RestoreSession = function()
   end
 end
 
-function DeleteSession()
+M.DeleteSession = function()
   local sname = vim.fn.eval('v:this_session'):gsub(session_dir, "")
 
   if sname == "" or sname == nil then
     print("You must open a session to delete it")
   else
-    local sessions = {}       -- Table to store session names
+    local confirm = vim.fn.input("Enter \"yes\" to delete: ")
 
-    vim.fn.delete(session_dir .. sname)
+    if confirm == yes then
+      local sessions = {} -- Table to store session names
 
-    -- Get a list of .vim files in the session directory
-    local vim_files = vim.fn.glob(session_dir .. "*.vim", true, true)
+      vim.fn.delete(session_dir .. sname)
 
-    -- Extract and add session names from file paths
-    for _, file in ipairs(vim_files) do
-      local session_name = vim.fn.fnamemodify(file, ":t")
-      table.insert(sessions, session_name)
-    end
+      -- Get a list of .vim files in the session directory
+      local vim_files = vim.fn.glob(session_dir .. "*.vim", true, true)
 
-    -- Write the updated session list to sessions_list.txt
-    local file = io.open(session_dir .. "sessions_list.txt", "w")
-    if file then
-      for _, session in ipairs(sessions) do
-        file:write(session .. "\n")
+      -- Extract and add session names from file paths
+      for _, file in ipairs(vim_files) do
+        local session_name = vim.fn.fnamemodify(file, ":t")
+        table.insert(sessions, session_name)
       end
-      file:close()
+
+      -- Write the updated session list to sessions_list.txt
+      local file = io.open(session_dir .. "sessions_list.txt", "w")
+      if file then
+        for _, session in ipairs(sessions) do
+          file:write(session .. "\n")
+        end
+        file:close()
+      else
+        print("Error: Could not open " .. session_dir .. "sessions_list.txt" .. " for writing.")
+      end
     else
-      print("Error: Could not open " .. session_dir .. "sessions_list.txt" .. " for writing.")
+      print("Session Deletion Cancelled")
     end
   end
 end
 
 vim.cmd(
-[[command! DelSession lua vim.fn.input("Enter \"yes\" to delete: ") == "yes" and DeleteSession() or print("Session deletion cancelled") ]])
+  [[command! DelSession lua require"retrospect".DeleteSession() ]])
 
 
 function GotoSettings()
