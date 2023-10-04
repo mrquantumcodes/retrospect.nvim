@@ -8,6 +8,8 @@ session_dir = vim.fn.stdpath('data') .. "\\nvim_sessions\\"
 M.setup = function(options)
   M.opts = options
 
+  M.opts.style = options.style or "modern"
+
   local keybinding = options.saveKey or "<Leader>\\"
   local loadbinding = options.loadKey or "<Leader><BS>"
 
