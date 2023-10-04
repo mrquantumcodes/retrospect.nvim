@@ -3,7 +3,7 @@ local M = {}
 
 M.opts = {}
 
-session_dir = vim.fn.stdpath('data') .. "\\nvim_sessions\\"
+session_dir = vim.fn.stdpath('data'):gsub("\\", "/") .. "/nvim_sessions/"
 
 M.setup = function(options)
   M.opts = options
@@ -255,7 +255,7 @@ M.DeleteSession = function()
     if confirm == "yes" then
       local sessions = {} -- Table to store session names
 
-      vim.fn.delete(session_dir .. sname)
+      vim.fn.delete(session_dir .. "/" .. sname)
 
       -- Get a list of .vim files in the session directory
       local vim_files = vim.fn.glob(session_dir .. "*.vim", true, true)
@@ -274,12 +274,12 @@ M.DeleteSession = function()
         end
         file:close()
 
-        print("\nSession Deleted Successfully")
+        print("\n\nSession Deleted Successfully")
       else
         print("Error: Could not open " .. session_dir .. "sessions_list.txt" .. " for writing.")
       end
     else
-      print("\nSession Deletion Cancelled")
+      print("\n\nSession Deletion Cancelled")
     end
   end
 end
