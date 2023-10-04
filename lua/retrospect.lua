@@ -153,6 +153,8 @@ M.RestoreSession = function()
       prompt = "Select a session to restore",
     }, function(selected)
       if selected ~= "" and selected ~= nil then
+        vim.cmd('bufdo bd')
+
         local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
         vim.cmd("source " .. session_path)
 
@@ -174,12 +176,12 @@ M.RestoreSession = function()
     local win_id = vim.api.nvim_open_win(bufnr, true, {
       relative = 'editor',
       width = 55,
-      height = (#slist <= 5) and #slist or 5,
+      height = 5,
       row = vim.o.lines / 2 - #slist / 2 - 1,
       col = vim.o.columns / 2 - 27.5,
       style = 'minimal',
       border = 'rounded',
-      title = 'Navigate to a Buffer',
+      title = 'Open a session',
       anchor = 'NW'
     })
 
@@ -207,6 +209,8 @@ M.RestoreSession = function()
           -- vim.cmd('buffer ' .. selected_path)
 
           if selected ~= "" and selected ~= nil then
+            vim.cmd('bufdo bd')
+
             local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
             vim.cmd("source " .. session_path)
 
@@ -247,7 +251,7 @@ M.DeleteSession = function()
   else
     local confirm = vim.fn.input("Enter \"yes\" to delete: ")
 
-    if confirm == yes then
+    if confirm == "yes" then
       local sessions = {} -- Table to store session names
 
       vim.fn.delete(session_dir .. sname)
@@ -272,7 +276,7 @@ M.DeleteSession = function()
         print("Error: Could not open " .. session_dir .. "sessions_list.txt" .. " for writing.")
       end
     else
-      print("Session Deletion Cancelled")
+      print("\nSession Deletion Cancelled")
     end
   end
 end
