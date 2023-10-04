@@ -244,18 +244,19 @@ M.RestoreSession = function()
 end
 
 M.DeleteSession = function()
-  local sname = vim.fn.eval('v:this_session'):gsub(session_dir, "")
-  print("\n" .. sname .. "\n")
+  sname = vim.fn.eval('v:this_session'):gsub(session_dir, "")
+  -- print("\n" .. sname .. "\n")
 
   if sname == "" or sname == nil then
     print("You must open a session to delete it")
   else
-    local confirm = vim.fn.input("Enter \"yes\" to delete: ")
+    local confirm = vim.fn.input("Type \"yes\" to delete: ")
 
     if confirm == "yes" then
       local sessions = {} -- Table to store session names
 
       vim.fn.delete(session_dir .. "/" .. sname)
+      print(session_dir .. "/" .. sname)
 
       -- Get a list of .vim files in the session directory
       local vim_files = vim.fn.glob(session_dir .. "*.vim", true, true)
@@ -274,12 +275,12 @@ M.DeleteSession = function()
         end
         file:close()
 
-        print("\n\nSession Deleted Successfully")
+        print("\n\n Session Deleted Successfully")
       else
         print("Error: Could not open " .. session_dir .. "sessions_list.txt" .. " for writing.")
       end
     else
-      print("\n\nSession Deletion Cancelled")
+      print("\n\n Session Deletion Cancelled")
     end
   end
 end
