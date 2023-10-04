@@ -209,12 +209,12 @@ M.RestoreSession = function()
           if selected ~= "" and selected ~= nil then
             local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
             vim.cmd("source " .. session_path)
-    
+
             local sessions_list_path = session_dir .. "sessions_list.txt"
             updateSessionsList(sessions_list_path, pathToFilename(selected:gsub(".vim", "")))
-    
+
             print("Session restored")
-    
+
             statusline()
           end
         end
@@ -245,72 +245,34 @@ function DeleteSession()
   if sname == "" or sname == nil then
     print("You must open a session to delete it")
   else
-    local Input = require("nui.input")
-    local event = require("nui.utils.autocmd").event
+    local sessions = {}       -- Table to store session names
 
-    local input = Input({
-      position = "50%",
-      size = {
-        width = 34,
-      },
-      border = {
-        style = "single",
-        text = {
-          top = "[Type yes to confirm]",
-          top_align = "center",
-        },
-      },
-      win_options = {
-        winhighlight = "Normal:Normal,FloatBorder:Normal",
-      },
-    }, {
-      prompt = "> ",
-      default_value = "",
-      on_close = function()
-        print("Session deletion cancelled")
-      end,
-      on_submit = function(value)
-        if value == "yes" then
-          local sessions = {} -- Table to store session names
+    vim.fn.delete(session_dir .. sname)
 
-          vim.fn.delete(session_dir .. sname)
+    -- Get a list of .vim files in the session directory
+    local vim_files = vim.fn.glob(session_dir .. "*.vim", true, true)
 
-          -- Get a list of .vim files in the session directory
-          local vim_files = vim.fn.glob(session_dir .. "*.vim", true, true)
+    -- Extract and add session names from file paths
+    for _, file in ipairs(vim_files) do
+      local session_name = vim.fn.fnamemodify(file, ":t")
+      table.insert(sessions, session_name)
+    end
 
-          -- Extract and add session names from file paths
-          for _, file in ipairs(vim_files) do
-            local session_name = vim.fn.fnamemodify(file, ":t")
-            table.insert(sessions, session_name)
-          end
-
-          -- Write the updated session list to sessions_list.txt
-          local file = io.open(session_dir .. "sessions_list.txt", "w")
-          if file then
-            for _, session in ipairs(sessions) do
-              file:write(session .. "\n")
-            end
-            file:close()
-          else
-            print("Error: Could not open " .. session_dir .. "sessions_list.txt" .. " for writing.")
-          end
-        else
-          print("Session deletion cancelled")
-        end
-      end,
-    })
-
-    -- mount/open the component
-    input:mount()
-
-    -- unmount component when cursor leaves buffer
-    input:on(event.BufLeave, function()
-      input:unmount()
-    end)
+    -- Write the updated session list to sessions_list.txt
+    local file = io.open(session_dir .. "sessions_list.txt", "w")
+    if file then
+      for _, session in ipairs(sessions) do
+        file:write(session .. "\n")
+      end
+      file:close()
+    else
+      print("Error: Could not open " .. session_dir .. "sessions_list.txt" .. " for writing.")
+    end
   end
 end
 
-vim.cmd([[command! DelSession lua require"susman".DeleteSession() ]])
+vim.cmd(
+[[command! DelSession lua vim.fn.input("Enter \"yes\" to delete: ") == yes and DeleteSession() or print("Session deletion cancelled") ]])
 
 
 function GotoSettings()
