@@ -51,15 +51,17 @@ vim.api.nvim_set_keymap('i', '<C-s>', '<Esc>:w<CR>:lua SaveSession()<CR>', { nor
 
 function closeNonFileBuffers()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
+      local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
+      local listed = vim.fn.getbufinfo({bufnr})[1].listed -- Check if buffer is listed
 
-    -- Check if the buffer is non-file (e.g., NERDTree or UndoTree)
-    if buftype and buftype ~= '' then
-      -- Close the buffer
-      vim.api.nvim_command('bdelete ' .. bufnr)
-    end
+      -- Check if the buffer is non-file (e.g., NERDTree or UndoTree) and not listed
+      if buftype and buftype ~= '' and not listed then
+          -- Close the buffer
+          vim.api.nvim_command('bdelete ' .. bufnr)
+      end
   end
 end
+
 
 -- Function to save the current session with a name based on the current working directory
 M.SaveSession = function()
