@@ -220,7 +220,7 @@ M.RestoreSession = function()
           -- vim.cmd('buffer ' .. selected_path)
 
           if selected ~= "" and selected ~= nil then
-            vim.cmd('bufdo bd')
+            vim.cmd('bufdo bd!')
 
             local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
             vim.cmd("so " .. session_path)
