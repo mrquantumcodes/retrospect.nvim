@@ -45,7 +45,6 @@ function filenameToPath(filename)
   return decoded
 end
 
-vim.api.nvim_set_keymap('i', '<C-s>', '<Esc>:w<CR>:lua SaveSession()<CR>', { noremap = true, silent = true })
 
 
 
