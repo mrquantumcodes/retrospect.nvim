@@ -51,24 +51,22 @@ vim.api.nvim_set_keymap('i', '<C-s>', '<Esc>:w<CR>:lua SaveSession()<CR>', { nor
 
 function closeNonFileBuffers()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-      local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
-      local listed = vim.fn.getbufinfo({bufnr})[1].listed -- Check if buffer is listed
+    local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
 
-      -- Check if the buffer is non-file (e.g., NERDTree or UndoTree) and not listed
-      if buftype and buftype ~= '' and not listed then
-          -- Close the buffer
-          vim.api.nvim_command('bdelete ' .. bufnr)
-      end
+    -- Check if the buffer is non-file (e.g., NERDTree or UndoTree)
+    if buftype and buftype ~= '' then
+      -- Close the buffer
+      vim.api.nvim_command('bdelete ' .. bufnr)
+    end
   end
 end
-
 
 -- Function to save the current session with a name based on the current working directory
 M.SaveSession = function()
   -- vim.cmd("NERDTreeClose")
   -- vim.cmd("UndotreeHide")
 
-  closeNonFileBuffers()
+  -- closeNonFileBuffers()
 
   if vim.fn.getcwd():gsub("\\", "/"):gsub("~", vim.fn.expand("$HOME")) == vim.fn['stdpath']('config'):gsub("\\", "/"):gsub("~", vim.fn.expand("$HOME")) then
     print("Cannot create a session for the Neovim config folder")
@@ -128,6 +126,17 @@ function updateSessionsList(file_path, current_session_name)
   end
 end
 
+function ignoreProblematicBuffers()
+  if vim.fn.bufexists(1) == 1 then
+    local num_buffers = vim.fn.bufnr('$')
+    for l = 1, num_buffers do
+      if vim.fn.bufwinnr(l) == -1 then
+        vim.api.nvim_command('sbuffer ' .. l)
+      end
+    end
+  end
+end
+
 -- Function to restore a session from the selected session file
 M.RestoreSession = function()
   if vim.fn.isdirectory(session_dir) == 0 or vim.fn['filereadable'](session_dir .. "sessions_list.txt") == 0 then
@@ -159,6 +168,8 @@ M.RestoreSession = function()
 
         local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
         vim.cmd("source " .. session_path)
+
+        ignoreProblematicBuffers()
 
         local sessions_list_path = session_dir .. "sessions_list.txt"
         updateSessionsList(sessions_list_path, pathToFilename(selected:gsub(".vim", "")))
@@ -215,6 +226,8 @@ M.RestoreSession = function()
 
             local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
             vim.cmd("source " .. session_path)
+
+            ignoreProblematicBuffers()
 
             local sessions_list_path = session_dir .. "sessions_list.txt"
             updateSessionsList(sessions_list_path, pathToFilename(selected:gsub(".vim", "")))
