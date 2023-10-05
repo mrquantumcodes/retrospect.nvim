@@ -127,14 +127,13 @@ function updateSessionsList(file_path, current_session_name)
 end
 
 function ignoreProblematicBuffers()
-  if vim.fn.bufexists(1) == 1 then
-    local num_buffers = vim.fn.bufnr('$')
-    for l = 1, num_buffers do
-      if vim.fn.bufwinnr(l) == -1 then
+  local num_buffers = vim.fn.bufnr('$')
+for l = 1, num_buffers do
+    if vim.fn.bufwinnr(l) == -1 then
         vim.api.nvim_command('sbuffer ' .. l)
-      end
     end
-  end
+end
+
 end
 
 -- Function to restore a session from the selected session file
