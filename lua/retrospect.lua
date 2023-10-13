@@ -173,7 +173,7 @@ M.RestoreSession = function()
 
         print("Session restored")
 
-        statusline()
+        -- statusline()
       end
     end)
   else
@@ -231,7 +231,7 @@ M.RestoreSession = function()
 
             print("Session restored")
 
-            statusline()
+            -- statusline()
           end
         end
       end
