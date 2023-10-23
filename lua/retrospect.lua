@@ -45,9 +45,6 @@ function filenameToPath(filename)
   return decoded
 end
 
-
-
-
 function closeNonFileBuffers()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
@@ -176,7 +173,7 @@ M.RestoreSession = function()
         -- statusline()
       end
     end)
-  else
+  elseif M.opts.style == "default" then
     local bufnr = vim.api.nvim_create_buf(false, true)
 
     -- Set the buffer contents to the list of buffer paths
@@ -252,6 +249,22 @@ M.RestoreSession = function()
 
     -- Store window ID and buffer number for later use
     vim.api.nvim_buf_set_var(bufnr, 'buffer_list_win_id', win_id)
+  else
+    if pcall(require, 'telescope') then
+      local pickers = require "telescope.pickers"
+      local finders = require "telescope.finders"
+      local conf = require("telescope.config").values
+
+      pickers.new({}, {
+        prompt_title = "Select a session to restore",
+        finder = finders.new_table {
+          results = slist
+        },
+        sorter = conf.generic_sorter({}),
+      }):find()
+    else
+      print("Telescope is not installed")
+    end
   end
 end
 
