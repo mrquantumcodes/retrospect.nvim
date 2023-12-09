@@ -45,17 +45,14 @@ function filenameToPath(filename)
   return decoded
 end
 
-
-
-
 function closeNonFileBuffers()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
+    local buftype = vim.bo.filetype
 
     -- Check if the buffer is non-file (e.g., NERDTree or UndoTree)
-    if buftype and buftype ~= '' then
+    if buftype == '' or buftype == 'netrw' then
       -- Close the buffer
-      vim.api.nvim_command('bdelete ' .. bufnr)
+      vim.api.nvim_command('bdelete! ' .. bufnr)
     end
   end
 end
@@ -65,7 +62,7 @@ M.SaveSession = function()
   -- vim.cmd("NERDTreeClose")
   -- vim.cmd("UndotreeHide")
 
-  -- closeNonFileBuffers()
+  closeNonFileBuffers()
 
   if vim.fn.getcwd():gsub("\\", "/"):gsub("~", vim.fn.expand("$HOME")) == vim.fn['stdpath']('config'):gsub("\\", "/"):gsub("~", vim.fn.expand("$HOME")) then
     print("Cannot create a session for the Neovim config folder")
