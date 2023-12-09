@@ -47,13 +47,16 @@ end
 
 function closeNonFileBuffers()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    local buftype = vim.fn.getbufvar(bufnr, '&filetype')
+    vim.api.nvim_buf_call(15, function()
+      local buftype = vim.bo.filetype
+
+      if buftype == '' or buftype == 'netrw' then
+        -- Close the buffer
+        vim.api.nvim_command('bdelete! ' .. bufnr)
+      end
+    end)
 
     -- Check if the buffer is non-file (e.g., NERDTree or UndoTree)
-    if buftype == '' or buftype == 'netrw' then
-      -- Close the buffer
-      vim.api.nvim_command('bdelete! ' .. bufnr)
-    end
   end
 end
 
