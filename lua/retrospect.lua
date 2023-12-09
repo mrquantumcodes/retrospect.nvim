@@ -47,7 +47,7 @@ end
 
 function closeNonFileBuffers()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    local buftype = vim.bo.filetype
+    local buftype = vim.fn.getbufvar(bufnr, '&filetype')
 
     -- Check if the buffer is non-file (e.g., NERDTree or UndoTree)
     if buftype == '' or buftype == 'netrw' then
