@@ -47,14 +47,16 @@ end
 
 function closeNonFileBuffers()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    vim.api.nvim_buf_call(15, function()
+    vim.api.nvim_buf_call(bufnr, function()
       local buftype = vim.bo.filetype
+      -- print(buftype)
 
-      if buftype == '' or buftype == 'netrw' then
+      if  buftype == 'netrw' then
         -- Close the buffer
-        vim.api.nvim_command('bdelete! ' .. bufnr)
+        vim.cmd(':bdelete! ' .. tostring(bufnr))
       end
     end)
+
 
     -- Check if the buffer is non-file (e.g., NERDTree or UndoTree)
   end
@@ -135,7 +137,12 @@ function ignoreProblematicBuffers()
 end
 
 -- Function to restore a session from the selected session file
+
+shouldDeleteWindow = false
+
 M.RestoreSession = function()
+  shouldDeleteWindow = true
+
   if vim.fn.isdirectory(session_dir) == 0 or vim.fn['filereadable'](session_dir .. "sessions_list.txt") == 0 then
     print("No session has been created yet")
     return
@@ -160,6 +167,7 @@ M.RestoreSession = function()
     vim.ui.select(slist, {
       prompt = "Select a session to restore",
     }, function(selected)
+      shouldDeleteWindow = false
       if selected ~= "" and selected ~= nil then
         vim.cmd('bufdo bd')
 
@@ -213,25 +221,29 @@ M.RestoreSession = function()
             vim.cmd('set modifiable')
           end)
 
-          vim.cmd('bdelete ' .. bufnr) -- Close the buffer list window
-          -- vim.cmd('edit ' .. selected_path)
+          if shouldDeleteWindow then
+            vim.cmd('bdelete! ' .. bufnr) -- Close the buffer list window
+            -- vim.cmd('edit ' .. selected_path)
 
-          -- vim.cmd('buffer ' .. selected_path)
+            -- vim.cmd('buffer ' .. selected_path)
 
-          if selected ~= "" and selected ~= nil then
-            vim.cmd('bufdo bd!')
+            if selected ~= "" and selected ~= nil then
+              vim.cmd('bufdo bd!')
 
-            local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
-            vim.cmd("so " .. session_path)
+              local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
+              vim.cmd("so " .. session_path)
 
-            ignoreProblematicBuffers()
+              ignoreProblematicBuffers()
 
-            local sessions_list_path = session_dir .. "sessions_list.txt"
-            updateSessionsList(sessions_list_path, pathToFilename(selected:gsub(".vim", "")))
+              local sessions_list_path = session_dir .. "sessions_list.txt"
+              updateSessionsList(sessions_list_path, pathToFilename(selected:gsub(".vim", "")))
 
-            print("Session restored")
+              print("Session restored")
 
-            -- statusline()
+              -- statusline()
+            end
+
+            shouldDeleteWindow = false
           end
         end
       end
