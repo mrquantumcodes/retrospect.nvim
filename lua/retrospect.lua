@@ -205,6 +205,7 @@ M.RestoreSession = function()
 
     vim.api.nvim_buf_call(bufnr, function()
       vim.cmd('set nomodifiable')
+      vim.cmd('set cursorline')
     end)
 
     -- Set key mappings for navigation and buffer opening
