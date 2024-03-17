@@ -202,7 +202,7 @@ M.RestoreSession = function()
         -- statusline()
       end
     end)
-  elseif pcall(require, 'telescope') and M.opts.style ~= "modern" and M.opts.style ~= "default" then
+  elseif pcall(require, 'telescope') and M.opts.style == "telescope" then
     local action_state = require("telescope.actions.state")
     local action_utils = require("telescope.actions.utils")
     local entry_display = require("telescope.pickers.entry_display")
