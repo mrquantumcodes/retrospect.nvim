@@ -3,6 +3,10 @@ local M = {}
 
 M.opts = {}
 
+CurrSessionCwd = ""
+
+should_reorder = false
+
 session_dir = vim.fn.stdpath('data'):gsub("\\", "/") .. "/nvim_sessions/"
 
 M.setup = function(options)
@@ -12,6 +16,8 @@ M.setup = function(options)
 
   local keybinding = options.saveKey or "<Leader>\\"
   local loadbinding = options.loadKey or "<Leader><BS>"
+
+  should_reorder = options.auto_buffer_reorder or false
 
   if loadbinding ~= "NONE" then
     vim.api.nvim_set_keymap('n', loadbinding, "",
@@ -51,7 +57,7 @@ function closeNonFileBuffers()
       local buftype = vim.bo.filetype
       -- print(buftype)
 
-      if  buftype == 'netrw' then
+      if buftype == 'netrw' then
         -- Close the buffer
         vim.cmd(':bdelete! ' .. tostring(bufnr))
       end
@@ -81,6 +87,12 @@ M.SaveSession = function()
   local cwd = pathToFilename(vim.fn.getcwd())
   local session_path = session_dir .. cwd .. ".vim"
   vim.cmd("mksession! " .. session_path)
+
+  local session_buf_order_path = session_dir .. cwd .. ".buforder"
+  file = io.open(session_buf_order_path, "w+")
+  io.output(file)
+  io.write(vim.fn.execute("ls t"))
+  io.close(file)
 
   -- Update the sessions_list.txt file
   local sessions_list_path = session_dir .. "sessions_list.txt"
@@ -171,6 +183,8 @@ M.RestoreSession = function()
       if selected ~= "" and selected ~= nil then
         vim.cmd('bufdo bd')
 
+        CurrSessionCwd = pathToFilename(selected:gsub(".vim", ""))
+
         local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
         vim.cmd("so " .. session_path)
 
@@ -181,9 +195,71 @@ M.RestoreSession = function()
 
         print("Session restored")
 
+        if should_reorder then
+          -- ReorderBuffers()
+        end
+
         -- statusline()
       end
     end)
+  elseif pcall(require, 'telescope') and M.opts.style == "telescope" then
+    local action_state = require("telescope.actions.state")
+    local action_utils = require("telescope.actions.utils")
+    local entry_display = require("telescope.pickers.entry_display")
+    local finders = require("telescope.finders")
+    local pickers = require("telescope.pickers")
+    local conf = require("telescope.config").values
+
+    -- new telescope picker
+    pickers.new({}, {
+      prompt_title = "Select a session to restore",
+      finder = finders.new_table {
+        results = slist,
+        entry_maker = function(entry)
+          return {
+            display = entry,
+            value = entry,
+            ordinal = entry,
+          }
+        end,
+      },
+      sorter = conf.generic_sorter({}),
+      attach_mappings = function(prompt_bufnr, map)
+        local restore_session = function()
+          local selection = action_state.get_selected_entry()
+          if selection then
+            local selected = selection.value
+
+            if selected ~= "" and selected ~= nil then
+              vim.cmd('bufdo! bd')
+
+              CurrSessionCwd = pathToFilename(selected:gsub(".vim", ""))
+
+              local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
+              vim.cmd("so " .. session_path)
+
+              ignoreProblematicBuffers()
+
+              local sessions_list_path = session_dir .. "sessions_list.txt"
+              updateSessionsList(sessions_list_path, pathToFilename(selected:gsub(".vim", "")))
+
+              print("Session restored")
+
+              if should_reorder then
+                -- ReorderBuffers()
+              end
+
+              -- statusline()
+            end
+          end
+        end
+
+        map("i", "<CR>", restore_session)
+        map("n", "<CR>", restore_session)
+
+        return true
+      end,
+    }):find()
   else
     local bufnr = vim.api.nvim_create_buf(false, true)
 
@@ -217,6 +293,8 @@ M.RestoreSession = function()
         local line_number = vim.fn.line('.')
         local selected = slist[line_number]
 
+
+
         if selected then
           vim.api.nvim_buf_call(bufnr, function()
             vim.cmd('set modifiable')
@@ -231,6 +309,8 @@ M.RestoreSession = function()
             if selected ~= "" and selected ~= nil then
               vim.cmd('bufdo bd!')
 
+              CurrSessionCwd = pathToFilename(selected:gsub(".vim", ""))
+
               local session_path = session_dir .. pathToFilename(selected:gsub(".vim", "")) .. ".vim"
               vim.cmd("so " .. session_path)
 
@@ -239,7 +319,11 @@ M.RestoreSession = function()
               local sessions_list_path = session_dir .. "sessions_list.txt"
               updateSessionsList(sessions_list_path, pathToFilename(selected:gsub(".vim", "")))
 
-              print("Session restored")
+              -- print("Session restored")
+
+              if should_reorder then
+                -- ReorderBuffers()
+              end
 
               -- statusline()
             end
@@ -327,6 +411,52 @@ vim.api.nvim_set_keymap('n', '<Leader>\\', ':lua SaveSession()<CR>', { noremap =
 
 -- Map Leader+Backspace to restore a session from a list of available sessions
 vim.api.nvim_set_keymap('n', '<Leader><BS>', ':lua RestoreSession()<CR>', { noremap = true, silent = true })
+
+
+function ReverseTable(t)
+  local reversedTable = {}
+  local itemCount = #t
+  for k, v in ipairs(t) do
+    reversedTable[itemCount + 1 - k] = v
+  end
+  return reversedTable
+end
+
+-- Define a function to reorder buffers based on the output of "ls t"
+function ReorderBuffers()
+  -- Run the "ls t" command and capture its output
+
+  local sessOrder = vim.v.this_session:gsub("%.vim", "%.buforder")
+  local mfile = io.open(sessOrder, "r")
+
+  FileContents = ""
+
+  if mfile ~= nil then
+    io.input(mfile)
+    FileContents = mfile:read("a")
+    print(FileContents)
+    mfile:close()
+  end
+
+
+  local ls_output = vim.split(FileContents, "\n")
+  -- local ls_output = vim.split(vim.fn.execute("ls"), "\n")
+
+  ls_output = ReverseTable(ls_output)
+
+  -- Iterate through the list of files and open them in order
+  for _, filename in ipairs(ls_output) do
+    fname = filename:match("\"(.-)\"")
+    if fname ~= nil and fname ~= "nil" then
+      vim.cmd("bnext")          -- Switch to the next buffer
+      vim.cmd("edit " .. fname) -- Open the file
+    end
+    print(filename:match("\"(.-)\""))
+  end
+end
+
+-- Map the function to a command
+vim.cmd("command! ReorderBuffers lua ReorderBuffers()")
 
 
 return M
