@@ -1,5 +1,7 @@
 # Retrospect.nvim
 
+![App Screenshot](https://github.com/mrquantumcodes/retrospect.nvim/blob/main/demo.gif)
+
 Retrospect.nvim is a Neovim plugin that simplifies session management by allowing you to save and recall your recent sessions effortlessly. It presents your saved sessions in a list, ordered by last usage, making it easy to jump back to your work exactly where you left off.
 
 # Features:
