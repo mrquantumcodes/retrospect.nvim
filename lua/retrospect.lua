@@ -52,7 +52,6 @@ function pathToFilename(path, isReading)
 		encoded = encoded .. string.byte(path, i) .. "_"
 	end
 
-	return encoded
 
 	return encoded
 end
