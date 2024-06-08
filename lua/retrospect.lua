@@ -38,7 +38,7 @@ function pathToFilename(path)
 	-- return encoded
 	local encoded = ""
 	encoded = path:gsub("\\", "/")
-	encoded = path:gsub("/", "_SL_")
+	encoded = encoded:gsub("/", "_SL_")
 	return encoded
 end
 
