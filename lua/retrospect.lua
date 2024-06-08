@@ -32,7 +32,7 @@ end
 
 function pathToFilename(path, isReading)
 	isReading = isReading or "yes"
-	print(isReading)
+	-- print(isReading)
 
 	local encoded = ""
 	encoded = path:gsub("\\", "/")
