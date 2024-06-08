@@ -31,11 +31,17 @@ M.setup = function(options)
 end
 
 function pathToFilename(path)
-	-- local encoded = ""
-	-- for i = 1, #path do
-	--   encoded = encoded .. string.byte(path, i) .. "_"
-	-- end
+	local encoded = ""
+	for i = 1, #path do
+	  encoded = encoded .. string.byte(path, i) .. "_"
+	end
+
+	if vim.fn.filereadable(path) == 0 then
+		return encoded
+	end
+
 	-- return encoded
+
 	local encoded = ""
 	encoded = path:gsub("\\", "/")
 	-- substitute colon as _Q_
