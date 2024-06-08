@@ -69,7 +69,8 @@ function filenameToPath(filename)
 	decoded = filename
 	decoded = decoded:gsub("_Q_", ":")
 	decoded = filename:gsub("_SL_", "/")
-	if vim.fn.filereadable(decoded) == 1 then
+
+	if vim.fn.filereadable(session_dir .. "/" .. decoded) == 1 then
 		return decoded
 	else
 		local decoded = ""
