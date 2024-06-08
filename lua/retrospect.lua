@@ -38,6 +38,8 @@ function pathToFilename(path)
 	-- return encoded
 	local encoded = ""
 	encoded = path:gsub("\\", "/")
+	-- substitute colon as _Q_
+	encoded = encoded:gsub(":", "_Q_")
 	encoded = encoded:gsub("/", "_SL_")
 	return encoded
 end
@@ -54,10 +56,11 @@ function filenameToPath(filename)
 	end
 	-- return decoded
 
-	if vim.fn.filereadable(decoded) == 1 then
+	if vim.fn.filereadable(decoded) == 0 then
 		return decoded
 	else
 		decoded = filename
+		decoded = decoded:gsub("_Q_", ":")
 		decoded = filename:gsub("_SL_", "/")
 		return decoded
 	end
