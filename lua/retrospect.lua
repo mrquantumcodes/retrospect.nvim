@@ -32,43 +32,44 @@ end
 
 function pathToFilename(path)
 	local encoded = ""
-	for i = 1, #path do
-	  encoded = encoded .. string.byte(path, i) .. "_"
-	end
-
-	if vim.fn.filereadable(path) == 0 then
-		return encoded
-	end
-
-	-- return encoded
-
-	local encoded = ""
 	encoded = path:gsub("\\", "/")
 	-- substitute colon as _Q_
 	encoded = encoded:gsub(":", "_Q_")
 	encoded = encoded:gsub("/", "_SL_")
 	return encoded
+
+	if vim.fn.filereadable(path) == 0 then
+		return encoded
+	end
+
+	local encoded = ""
+	for i = 1, #path do
+		encoded = encoded .. string.byte(path, i) .. "_"
+	end
+
+	-- return encoded
 end
 
 -- Function to decode a reversible string back to a path
 function filenameToPath(filename)
-	local decoded = ""
-	local parts = {}
-	for part in filename:gmatch("[^_]+") do
-		table.insert(parts, tonumber(part))
-	end
-	for _, value in ipairs(parts) do
-		decoded = decoded .. string.char(value)
-	end
 	-- return decoded
+
+	decoded = filename
+	decoded = decoded:gsub("_Q_", ":")
+	decoded = filename:gsub("_SL_", "/")
+	return decoded
 
 	if vim.fn.filereadable(decoded) == 0 then
 		return decoded
 	else
-		decoded = filename
-		decoded = decoded:gsub("_Q_", ":")
-		decoded = filename:gsub("_SL_", "/")
-		return decoded
+		local decoded = ""
+		local parts = {}
+		for part in filename:gmatch("[^_]+") do
+			table.insert(parts, tonumber(part))
+		end
+		for _, value in ipairs(parts) do
+			decoded = decoded .. string.char(value)
+		end
 	end
 
 end
