@@ -31,10 +31,14 @@ M.setup = function(options)
 end
 
 function pathToFilename(path)
+  -- local encoded = ""
+  -- for i = 1, #path do
+  --   encoded = encoded .. string.byte(path, i) .. "_"
+  -- end
+  -- return encoded
   local encoded = ""
-  for i = 1, #path do
-    encoded = encoded .. string.byte(path, i) .. "_"
-  end
+  encoded = path:gsub("\\", "/")
+  encoded = path:gsub("/", "_SL_")
   return encoded
 end
 
@@ -48,6 +52,14 @@ function filenameToPath(filename)
   for _, value in ipairs(parts) do
     decoded = decoded .. string.char(value)
   end
+  -- return decoded
+
+  if vim.fn.filereadable(filename) == 1 then
+	return filename
+  end
+
+  decoded = filename
+  decoded = filename:gsub("_SL_", "/")
   return decoded
 end
 
