@@ -67,10 +67,12 @@ function filenameToPath(filename)
 	-- return decoded
 
 	decoded = filename
-	decoded = decoded:gsub("_Q_", ":")
 	decoded = filename:gsub("_SL_", "/")
+	decoded = decoded:gsub("_Q_", ":")
 
-	if vim.fn.isdirectory(decoded) == 1 then
+	local decodeCheck = decoded:gsub('.vim', '')
+
+	if vim.fn.isdirectory(decodeCheck) == 1 then
 		return decoded
 	else
 		local decoded = ""
