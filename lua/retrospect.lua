@@ -31,7 +31,8 @@ M.setup = function(options)
 end
 
 function pathToFilename(path, isReading)
-	isReading = isReading or true
+	isReading = isReading or "yes"
+	print(isReading)
 
 	local encoded = ""
 	encoded = path:gsub("\\", "/")
@@ -40,7 +41,7 @@ function pathToFilename(path, isReading)
 	encoded = encoded:gsub("/", "_SL_")
 
 	-- if isReading is false return the encoded path
-	if isReading == false then
+	if isReading == "no" then
 		return encoded
 	else
 
@@ -119,7 +120,7 @@ M.SaveSession = function()
 	createSessionDirectory()
 
 	-- Get the current working directory and replace slashes with double underscores
-	local cwd = pathToFilename(vim.fn.getcwd(), false)
+	local cwd = pathToFilename(vim.fn.getcwd(), "no")
 	local session_path = session_dir .. cwd .. ".vim"
 	vim.cmd("mksession! " .. session_path)
 
