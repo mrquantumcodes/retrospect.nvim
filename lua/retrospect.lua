@@ -39,7 +39,8 @@ function pathToFilename(path, isReading)
 	encoded = encoded:gsub(":", "_Q_")
 	encoded = encoded:gsub("/", "_SL_")
 
-	if not isReading then
+	-- if isReading is false return the encoded path
+	if isReading == false then
 		return encoded
 	else
 
