@@ -497,5 +497,4 @@ end
 -- Map the function to a command
 vim.cmd("command! ReorderBuffers lua ReorderBuffers()")
 
-
 return M
