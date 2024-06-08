@@ -30,26 +30,31 @@ M.setup = function(options)
 	end
 end
 
-function pathToFilename(path)
+function pathToFilename(path, isReading)
+	isReading = isReading or true
+
 	local encoded = ""
 	encoded = path:gsub("\\", "/")
 	-- substitute colon as _Q_
 	encoded = encoded:gsub(":", "_Q_")
 	encoded = encoded:gsub("/", "_SL_")
 
+	if not isReading then
+		return encoded
+	end
+
+	if vim.fn.filereadable(path) == 1 then
+		return encoded
+	end
+
+	local encoded = ""
+	for i = 1, #path do
+		encoded = encoded .. string.byte(path, i) .. "_"
+	end
+
 	return encoded
-	-- if vim.fn.filereadable(path) == 1 then
-	-- 	return encoded
-	-- end
 
-	-- local encoded = ""
-	-- for i = 1, #path do
-	-- 	encoded = encoded .. string.byte(path, i) .. "_"
-	-- end
-
-	-- return encoded
-
-	-- return encoded
+	return encoded
 end
 
 -- Function to decode a reversible string back to a path
@@ -110,7 +115,7 @@ M.SaveSession = function()
 	createSessionDirectory()
 
 	-- Get the current working directory and replace slashes with double underscores
-	local cwd = pathToFilename(vim.fn.getcwd())
+	local cwd = pathToFilename(vim.fn.getcwd(), false)
 	local session_path = session_dir .. cwd .. ".vim"
 	vim.cmd("mksession! " .. session_path)
 
