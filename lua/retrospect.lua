@@ -41,19 +41,23 @@ function pathToFilename(path, isReading)
 
 	if not isReading then
 		return encoded
+	else
+
+		if vim.fn.filereadable(path) == 1 then
+			return encoded
+		else
+
+			local encoded = ""
+			for i = 1, #path do
+				encoded = encoded .. string.byte(path, i) .. "_"
+			end
+
+
+			return encoded
+
+		end
+
 	end
-
-	if vim.fn.filereadable(path) == 1 then
-		return encoded
-	end
-
-	local encoded = ""
-	for i = 1, #path do
-		encoded = encoded .. string.byte(path, i) .. "_"
-	end
-
-
-	return encoded
 end
 
 -- Function to decode a reversible string back to a path
