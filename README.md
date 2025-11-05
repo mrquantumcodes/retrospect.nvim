@@ -16,9 +16,6 @@ Retrospect.nvim is a modern Neovim plugin that makes session management effortle
 - **Beautiful UI** - Clean floating window picker with intuitive keybindings
 - **Safe by design** - Prevents accidental config directory sessions
 
-## Requirements
-
-- Neovim >= 0.9.0 (tested on 0.11.2)
 
 ## Installation
 
