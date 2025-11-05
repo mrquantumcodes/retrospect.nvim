@@ -94,10 +94,24 @@ end
 local function save_metadata(cwd)
   local paths = get_session_paths(cwd)
 
+  -- Get list of loaded buffers
+  local buffers = {}
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(bufnr) then
+      local bufname = vim.api.nvim_buf_get_name(bufnr)
+      local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
+      -- Only save real file buffers
+      if bufname ~= '' and buftype == '' then
+        table.insert(buffers, bufname)
+      end
+    end
+  end
+
   local metadata = {
     cwd = cwd,
     saved_at = os.time(),
     nvim_version = vim.version(),
+    buffers = buffers,
   }
 
   vim.fn.writefile({ vim.json.encode(metadata) }, paths.metadata)

@@ -14,6 +14,8 @@ local state = {
   prompt_winid = nil,
   results_bufnr = nil,
   results_winid = nil,
+  preview_bufnr = nil,
+  preview_winid = nil,
   on_select = nil,
   on_delete = nil,
 }
@@ -34,6 +36,63 @@ local function format_time_ago(timestamp)
   else
     return os.date('%b %d', timestamp)
   end
+end
+
+-- Update preview window with session info
+local function update_preview()
+  if not state.preview_bufnr or not vim.api.nvim_buf_is_valid(state.preview_bufnr) then
+    return
+  end
+
+  if #state.filtered_sessions == 0 then
+    vim.api.nvim_buf_set_option(state.preview_bufnr, 'modifiable', true)
+    vim.api.nvim_buf_set_lines(state.preview_bufnr, 0, -1, false, { 'No sessions selected' })
+    vim.api.nvim_buf_set_option(state.preview_bufnr, 'modifiable', false)
+    return
+  end
+
+  local selected = state.filtered_sessions[state.selected_index]
+  if not selected then
+    return
+  end
+
+  local lines = {}
+
+  -- Special handling for --CONFIG--
+  if selected.session_id == '--CONFIG--' then
+    table.insert(lines, 'Open Neovim configuration directory')
+    table.insert(lines, '')
+    table.insert(lines, 'Location: ' .. vim.fn.stdpath('config'))
+  else
+    local metadata = session.get_metadata(selected.session_id)
+
+    if metadata and metadata.buffers and #metadata.buffers > 0 then
+      table.insert(lines, 'Files in session (' .. #metadata.buffers .. '):')
+      table.insert(lines, '')
+
+      -- Show up to 20 files
+      local max_files = math.min(20, #metadata.buffers)
+      for i = 1, max_files do
+        local filepath = metadata.buffers[i]
+        -- Make path relative to session cwd for readability
+        local relative = filepath:gsub('^' .. vim.pesc(selected.session_id) .. '/', '')
+        table.insert(lines, '  ' .. relative)
+      end
+
+      if #metadata.buffers > max_files then
+        table.insert(lines, '')
+        table.insert(lines, '  ... and ' .. (#metadata.buffers - max_files) .. ' more files')
+      end
+    else
+      table.insert(lines, 'No file information available')
+      table.insert(lines, '')
+      table.insert(lines, 'Save the session to see files')
+    end
+  end
+
+  vim.api.nvim_buf_set_option(state.preview_bufnr, 'modifiable', true)
+  vim.api.nvim_buf_set_lines(state.preview_bufnr, 0, -1, false, lines)
+  vim.api.nvim_buf_set_option(state.preview_bufnr, 'modifiable', false)
 end
 
 -- Update the filtered results based on current query
@@ -63,6 +122,9 @@ local function update_results()
   if state.results_winid and vim.api.nvim_win_is_valid(state.results_winid) and #state.filtered_sessions > 0 then
     pcall(vim.api.nvim_win_set_cursor, state.results_winid, {1, 0})
   end
+
+  -- Update preview
+  update_preview()
 end
 
 -- Move selection up/down
@@ -86,6 +148,9 @@ local function move_selection(direction)
   if state.results_winid and vim.api.nvim_win_is_valid(state.results_winid) then
     pcall(vim.api.nvim_win_set_cursor, state.results_winid, {new_index, 0})
   end
+
+  -- Update preview
+  update_preview()
 end
 
 -- Close the picker
@@ -99,6 +164,10 @@ local function close_picker()
     pcall(vim.api.nvim_win_close, state.results_winid, true)
   end
 
+  if state.preview_winid and vim.api.nvim_win_is_valid(state.preview_winid) then
+    pcall(vim.api.nvim_win_close, state.preview_winid, true)
+  end
+
   -- Clear state
   state = {
     sessions = {},
@@ -109,6 +178,8 @@ local function close_picker()
     prompt_winid = nil,
     results_bufnr = nil,
     results_winid = nil,
+    preview_bufnr = nil,
+    preview_winid = nil,
     on_select = nil,
     on_delete = nil,
   }
@@ -226,11 +297,22 @@ function M.show_session_picker(on_select, on_delete)
     local metadata = session.get_metadata(session_id)
     local formatted = utils.format_path_display(session_id)
 
-    -- Build info string
+    -- Build info string with stats
     local info = ''
     if metadata then
       local time_ago = format_time_ago(metadata.saved_at)
-      info = ' │ ' .. time_ago
+
+      -- Add file count if available
+      local stats = ''
+      if metadata.buffers and #metadata.buffers > 0 then
+        stats = #metadata.buffers .. ' file' .. (#metadata.buffers > 1 and 's' or '')
+      end
+
+      if stats ~= '' then
+        info = ' │ ' .. stats .. ' │ ' .. time_ago
+      else
+        info = ' │ ' .. time_ago
+      end
     end
 
     local display_text = formatted .. info
@@ -238,6 +320,7 @@ function M.show_session_picker(on_select, on_delete)
     table.insert(items, {
       session_id = session_id,
       display_text = display_text,
+      match_text = formatted,  -- Match against path only, not stats/time
     })
   end
 
@@ -253,10 +336,13 @@ function M.show_session_picker(on_select, on_delete)
   local editor_width = vim.o.columns
   local editor_height = vim.o.lines
 
-  local width = math.min(80, math.floor(editor_width * 0.8))
-  local height = math.min(20, math.floor(editor_height * 0.6))
+  local total_width = math.min(120, math.floor(editor_width * 0.9))
+  local height = math.min(25, math.floor(editor_height * 0.7))
 
-  local start_col = math.floor((editor_width - width) / 2)
+  local results_width = math.floor(total_width * 0.4)
+  local preview_width = total_width - results_width - 2
+
+  local start_col = math.floor((editor_width - total_width) / 2)
   local start_row = math.floor((editor_height - height) / 2)
 
   -- Create prompt buffer
@@ -265,10 +351,10 @@ function M.show_session_picker(on_select, on_delete)
   vim.api.nvim_buf_set_option(state.prompt_bufnr, 'bufhidden', 'wipe')
   vim.fn.prompt_setprompt(state.prompt_bufnr, '> ')
 
-  -- Create prompt window
+  -- Create prompt window (full width)
   state.prompt_winid = vim.api.nvim_open_win(state.prompt_bufnr, true, {
     relative = 'editor',
-    width = width,
+    width = total_width,
     height = 1,
     row = start_row,
     col = start_col,
@@ -284,22 +370,41 @@ function M.show_session_picker(on_select, on_delete)
   vim.api.nvim_buf_set_option(state.results_bufnr, 'bufhidden', 'wipe')
   vim.api.nvim_buf_set_option(state.results_bufnr, 'filetype', 'retrospect')
 
-  -- Create results window
+  -- Create results window (left side)
   state.results_winid = vim.api.nvim_open_win(state.results_bufnr, false, {
     relative = 'editor',
-    width = width,
+    width = results_width,
     height = height - 3,
     row = start_row + 3,
     col = start_col,
     style = 'minimal',
     border = 'rounded',
-    title = ' Results ',
+    title = ' Sessions ',
     title_pos = 'center',
     footer = ' <CR> Open | <C-d> Delete | <Esc> Close ',
     footer_pos = 'center',
   })
 
   vim.api.nvim_win_set_option(state.results_winid, 'cursorline', true)
+
+  -- Create preview buffer
+  state.preview_bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(state.preview_bufnr, 'modifiable', false)
+  vim.api.nvim_buf_set_option(state.preview_bufnr, 'bufhidden', 'wipe')
+  vim.api.nvim_buf_set_option(state.preview_bufnr, 'filetype', 'retrospect')
+
+  -- Create preview window (right side)
+  state.preview_winid = vim.api.nvim_open_win(state.preview_bufnr, false, {
+    relative = 'editor',
+    width = preview_width,
+    height = height - 3,
+    row = start_row + 3,
+    col = start_col + results_width + 2,
+    style = 'minimal',
+    border = 'rounded',
+    title = ' Preview ',
+    title_pos = 'center',
+  })
 
   -- Setup keymaps
   setup_keymaps()

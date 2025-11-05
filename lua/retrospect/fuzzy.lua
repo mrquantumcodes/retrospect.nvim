@@ -115,7 +115,7 @@ function M.match(text, pattern)
 end
 
 -- Filter and sort items by fuzzy match score
--- items: array of {session_id, display_text}
+-- items: array of {session_id, display_text, match_text (optional)}
 -- pattern: search pattern
 -- Returns: sorted array of {session_id, display_text, score, positions}
 function M.filter(items, pattern)
@@ -135,7 +135,9 @@ function M.filter(items, pattern)
   local results = {}
 
   for _, item in ipairs(items) do
-    local score, positions = M.match(item.display_text, pattern)
+    -- Match against match_text if provided, otherwise display_text
+    local match_against = item.match_text or item.display_text
+    local score, positions = M.match(match_against, pattern)
     if score > 0 then
       table.insert(results, {
         session_id = item.session_id,
