@@ -1,7 +1,22 @@
--- ui.lua: Beautiful session picker for retrospect.nvim
+-- ui.lua: Fuzzy picker for retrospect.nvim
 local session = require('retrospect.session')
 local utils = require('retrospect.utils')
+local fuzzy = require('retrospect.fuzzy')
 local M = {}
+
+-- Active picker state
+local state = {
+  sessions = {},
+  filtered_sessions = {},
+  current_query = "",
+  selected_index = 1,
+  prompt_bufnr = nil,
+  prompt_winid = nil,
+  results_bufnr = nil,
+  results_winid = nil,
+  on_select = nil,
+  on_delete = nil,
+}
 
 -- Format time ago (e.g., "2h ago", "3d ago")
 local function format_time_ago(timestamp)
@@ -21,138 +36,283 @@ local function format_time_ago(timestamp)
   end
 end
 
--- Beautiful session picker with smooth UX
-function M.show_session_picker(on_select, on_delete)
-  local sessions = session.list()
+-- Update the filtered results based on current query
+local function update_results()
+  local query = state.current_query
 
-  if #sessions == 0 then
+  -- Filter sessions using fuzzy matching
+  state.filtered_sessions = fuzzy.filter(state.sessions, query)
+
+  -- Build display lines
+  local display_lines = {}
+  for _, item in ipairs(state.filtered_sessions) do
+    table.insert(display_lines, item.display_text)
+  end
+
+  -- Update results buffer
+  if state.results_bufnr and vim.api.nvim_buf_is_valid(state.results_bufnr) then
+    vim.api.nvim_buf_set_option(state.results_bufnr, 'modifiable', true)
+    vim.api.nvim_buf_set_lines(state.results_bufnr, 0, -1, false, display_lines)
+    vim.api.nvim_buf_set_option(state.results_bufnr, 'modifiable', false)
+  end
+
+  -- Reset selection to first item
+  state.selected_index = 1
+
+  -- Update cursor position in results window
+  if state.results_winid and vim.api.nvim_win_is_valid(state.results_winid) and #state.filtered_sessions > 0 then
+    pcall(vim.api.nvim_win_set_cursor, state.results_winid, {1, 0})
+  end
+end
+
+-- Move selection up/down
+local function move_selection(direction)
+  if #state.filtered_sessions == 0 then
+    return
+  end
+
+  local new_index = state.selected_index + direction
+
+  -- Wrap around
+  if new_index < 1 then
+    new_index = #state.filtered_sessions
+  elseif new_index > #state.filtered_sessions then
+    new_index = 1
+  end
+
+  state.selected_index = new_index
+
+  -- Update cursor in results window
+  if state.results_winid and vim.api.nvim_win_is_valid(state.results_winid) then
+    pcall(vim.api.nvim_win_set_cursor, state.results_winid, {new_index, 0})
+  end
+end
+
+-- Close the picker
+local function close_picker()
+  -- Close all windows
+  if state.prompt_winid and vim.api.nvim_win_is_valid(state.prompt_winid) then
+    pcall(vim.api.nvim_win_close, state.prompt_winid, true)
+  end
+
+  if state.results_winid and vim.api.nvim_win_is_valid(state.results_winid) then
+    pcall(vim.api.nvim_win_close, state.results_winid, true)
+  end
+
+  -- Clear state
+  state = {
+    sessions = {},
+    filtered_sessions = {},
+    current_query = "",
+    selected_index = 1,
+    prompt_bufnr = nil,
+    prompt_winid = nil,
+    results_bufnr = nil,
+    results_winid = nil,
+    on_select = nil,
+    on_delete = nil,
+  }
+end
+
+-- Select current item
+local function select_item()
+  if #state.filtered_sessions == 0 then
+    close_picker()
+    return
+  end
+
+  local selected = state.filtered_sessions[state.selected_index]
+
+  if selected and state.on_select then
+    local callback = state.on_select
+    local session_id = selected.session_id
+    close_picker()
+    vim.schedule(function()
+      callback(session_id)
+    end)
+  end
+end
+
+-- Delete current item
+local function delete_item()
+  if #state.filtered_sessions == 0 then
+    return
+  end
+
+  local selected = state.filtered_sessions[state.selected_index]
+  if not selected then
+    return
+  end
+
+  -- Confirm deletion
+  vim.ui.input({
+    prompt = 'Delete "' .. utils.format_path_display(selected.session_id) .. '"? (yes/no): ',
+  }, function(input)
+    if input == 'yes' and state.on_delete then
+      state.on_delete(selected.session_id)
+      -- Refresh picker
+      close_picker()
+      vim.schedule(function()
+        M.show_session_picker(state.on_select, state.on_delete)
+      end)
+    end
+  end)
+end
+
+-- Setup keymaps for the picker
+local function setup_keymaps()
+  local prompt_bufnr = state.prompt_bufnr
+  local results_bufnr = state.results_bufnr
+
+  -- Escape to close
+  vim.keymap.set({'n', 'i'}, '<Esc>', close_picker, { buffer = prompt_bufnr, silent = true })
+  vim.keymap.set({'n', 'i'}, '<C-c>', close_picker, { buffer = prompt_bufnr, silent = true })
+
+  -- Enter to select
+  vim.keymap.set({'n', 'i'}, '<CR>', select_item, { buffer = prompt_bufnr, silent = true })
+
+  -- Navigation
+  vim.keymap.set('i', '<C-n>', function() move_selection(1) end, { buffer = prompt_bufnr, silent = true })
+  vim.keymap.set('i', '<C-p>', function() move_selection(-1) end, { buffer = prompt_bufnr, silent = true })
+  vim.keymap.set('i', '<Down>', function() move_selection(1) end, { buffer = prompt_bufnr, silent = true })
+  vim.keymap.set('i', '<Up>', function() move_selection(-1) end, { buffer = prompt_bufnr, silent = true })
+
+  -- Delete
+  vim.keymap.set({'n', 'i'}, '<C-d>', delete_item, { buffer = prompt_bufnr, silent = true })
+
+  -- Results window keymaps
+  if results_bufnr then
+    vim.keymap.set('n', 'j', function() move_selection(1) end, { buffer = results_bufnr, silent = true })
+    vim.keymap.set('n', 'k', function() move_selection(-1) end, { buffer = results_bufnr, silent = true })
+    vim.keymap.set('n', '<CR>', select_item, { buffer = results_bufnr, silent = true })
+    vim.keymap.set('n', '<Esc>', close_picker, { buffer = results_bufnr, silent = true })
+    vim.keymap.set('n', 'd', delete_item, { buffer = results_bufnr, silent = true })
+  end
+end
+
+-- Setup prompt callback for live filtering
+local function setup_prompt_callback()
+  -- Setup autocmd for text changes
+  vim.api.nvim_create_autocmd({'TextChanged', 'TextChangedI'}, {
+    buffer = state.prompt_bufnr,
+    callback = function()
+      -- Get current line text (skip the prompt prefix "> ")
+      local lines = vim.api.nvim_buf_get_lines(state.prompt_bufnr, 0, 1, false)
+      if #lines > 0 then
+        local line = lines[1]
+        local query = line:sub(3)  -- Skip "> "
+
+        if query ~= state.current_query then
+          state.current_query = query
+          update_results()
+        end
+      end
+    end,
+  })
+end
+
+-- Show session picker with fuzzy search
+function M.show_session_picker(on_select, on_delete)
+  local session_list = session.list()
+
+  if #session_list == 0 then
     vim.notify('No sessions found. Create one with your save key!', vim.log.levels.WARN)
     return
   end
 
-  -- Create display items with formatting and session info
-  local display_items = {}
-  local max_len = 0
-
-  for _, session_id in ipairs(sessions) do
-    local formatted = utils.format_path_display(session_id)
+  -- Build session items with display text
+  local items = {}
+  for _, session_id in ipairs(session_list) do
     local metadata = session.get_metadata(session_id)
+    local formatted = utils.format_path_display(session_id)
 
     -- Build info string
     local info = ''
     if metadata then
       local time_ago = format_time_ago(metadata.saved_at)
       info = ' │ ' .. time_ago
-
-      if metadata.git_branch then
-        info = info .. ' │ ' .. metadata.git_branch
-      end
     end
 
-    local display_line = formatted .. info
-    table.insert(display_items, display_line)
-    max_len = math.max(max_len, vim.fn.strdisplaywidth(display_line))
+    local display_text = formatted .. info
+
+    table.insert(items, {
+      session_id = session_id,
+      display_text = display_text,
+    })
   end
 
-  -- Create buffer
-  local bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, display_items)
-  vim.bo[bufnr].modifiable = false
-  vim.bo[bufnr].bufhidden = 'wipe'
-  vim.bo[bufnr].filetype = 'retrospect'
+  -- Initialize state
+  state.sessions = items
+  state.filtered_sessions = fuzzy.filter(items, "")
+  state.current_query = ""
+  state.selected_index = 1
+  state.on_select = on_select
+  state.on_delete = on_delete
 
-  -- Calculate window size dynamically
-  local width = math.min(math.max(max_len + 4, 60), vim.o.columns - 4)
-  local height = math.min(#display_items, math.floor(vim.o.lines * 0.6))
+  -- Calculate window positions
+  local editor_width = vim.o.columns
+  local editor_height = vim.o.lines
 
-  -- Create centered window with nice styling
-  local win_id = vim.api.nvim_open_win(bufnr, true, {
+  local width = math.min(80, math.floor(editor_width * 0.8))
+  local height = math.min(20, math.floor(editor_height * 0.6))
+
+  local start_col = math.floor((editor_width - width) / 2)
+  local start_row = math.floor((editor_height - height) / 2)
+
+  -- Create prompt buffer
+  state.prompt_bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(state.prompt_bufnr, 'buftype', 'prompt')
+  vim.api.nvim_buf_set_option(state.prompt_bufnr, 'bufhidden', 'wipe')
+  vim.fn.prompt_setprompt(state.prompt_bufnr, '> ')
+
+  -- Create prompt window
+  state.prompt_winid = vim.api.nvim_open_win(state.prompt_bufnr, true, {
     relative = 'editor',
     width = width,
-    height = height,
-    row = math.floor((vim.o.lines - height) / 2),
-    col = math.floor((vim.o.columns - width) / 2),
+    height = 1,
+    row = start_row,
+    col = start_col,
     style = 'minimal',
     border = 'rounded',
-    title = ' Sessions (MRU) ',
+    title = ' Search Sessions ',
     title_pos = 'center',
-    footer = ' <CR> Open | d Delete | <Esc> Close ',
+  })
+
+  -- Create results buffer
+  state.results_bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(state.results_bufnr, 'modifiable', false)
+  vim.api.nvim_buf_set_option(state.results_bufnr, 'bufhidden', 'wipe')
+  vim.api.nvim_buf_set_option(state.results_bufnr, 'filetype', 'retrospect')
+
+  -- Create results window
+  state.results_winid = vim.api.nvim_open_win(state.results_bufnr, false, {
+    relative = 'editor',
+    width = width,
+    height = height - 3,
+    row = start_row + 3,
+    col = start_col,
+    style = 'minimal',
+    border = 'rounded',
+    title = ' Results ',
+    title_pos = 'center',
+    footer = ' <CR> Open | <C-d> Delete | <Esc> Close ',
     footer_pos = 'center',
   })
 
-  -- Window options for better UX
-  vim.wo[win_id].cursorline = true
-  vim.wo[win_id].number = false
-  vim.wo[win_id].relativenumber = false
-  vim.wo[win_id].wrap = false
+  vim.api.nvim_win_set_option(state.results_winid, 'cursorline', true)
 
-  -- Highlight the floating window
-  vim.api.nvim_win_set_hl_ns(win_id, vim.api.nvim_create_namespace('RetrospectPicker'))
+  -- Setup keymaps
+  setup_keymaps()
 
-  -- Helper to close picker
-  local function close_picker()
-    if vim.api.nvim_win_is_valid(win_id) then
-      vim.api.nvim_win_close(win_id, true)
-    end
-  end
+  -- Setup prompt callback
+  setup_prompt_callback()
 
-  -- Select current line
-  local function select_current()
-    local line = vim.api.nvim_win_get_cursor(win_id)[1]
-    local selected = sessions[line]
-    close_picker()
-    if selected and on_select then
-      vim.schedule(function()
-        on_select(selected)
-      end)
-    end
-  end
+  -- Initial results display
+  update_results()
 
-  -- Delete current line
-  local function delete_current()
-    local line = vim.api.nvim_win_get_cursor(win_id)[1]
-    local selected = sessions[line]
-
-    if not selected then
-      return
-    end
-
-    -- Confirm deletion
-    vim.ui.input({
-      prompt = 'Delete "' .. utils.format_path_display(selected) .. '"? (yes/no): ',
-    }, function(input)
-      if input == 'yes' then
-        -- Delete the session
-        if on_delete then
-          on_delete(selected)
-        end
-
-        -- Refresh the picker
-        close_picker()
-        vim.schedule(function()
-          M.show_session_picker(on_select, on_delete)
-        end)
-      end
-    end)
-  end
-
-  -- Set keymaps for intuitive navigation
-  local opts = { buffer = bufnr, nowait = true, silent = true }
-
-  -- Selection
-  vim.keymap.set('n', '<CR>', select_current, opts)
-  vim.keymap.set('n', 'l', select_current, opts)
-
-  -- Close
-  vim.keymap.set('n', '<Esc>', close_picker, opts)
-  vim.keymap.set('n', 'q', close_picker, opts)
-  vim.keymap.set('n', '<C-c>', close_picker, opts)
-  vim.keymap.set('n', 'h', close_picker, opts)
-
-  -- Delete
-  vim.keymap.set('n', 'd', delete_current, opts)
-  vim.keymap.set('n', 'x', delete_current, opts)
-  vim.keymap.set('n', '<Del>', delete_current, opts)
+  -- Focus prompt window and enter insert mode
+  vim.api.nvim_set_current_win(state.prompt_winid)
+  vim.cmd('startinsert!')
 end
 
 return M

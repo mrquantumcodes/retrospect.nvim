@@ -6,35 +6,10 @@ local M = {}
 local state = {
   sessions_index = {}, -- List of session paths in MRU order
   current_session = nil,
-  git_branch_sessions = false,
 }
 
--- Get current git branch (if in a git repo)
-local function get_git_branch(cwd)
-  if not state.git_branch_sessions then
-    return nil
-  end
-
-  local handle = io.popen('cd ' .. vim.fn.shellescape(cwd) .. ' && git rev-parse --abbrev-ref HEAD 2>/dev/null')
-  if not handle then
-    return nil
-  end
-
-  local branch = handle:read('*a')
-  handle:close()
-
-  if branch and branch ~= '' then
-    return vim.trim(branch)
-  end
-  return nil
-end
-
--- Get session identifier (cwd + optional git branch)
+-- Get session identifier (just cwd)
 local function get_session_id(cwd)
-  local branch = get_git_branch(cwd)
-  if branch then
-    return cwd .. '@' .. branch
-  end
   return cwd
 end
 
@@ -118,11 +93,9 @@ end
 -- Save session metadata
 local function save_metadata(cwd)
   local paths = get_session_paths(cwd)
-  local branch = get_git_branch(cwd)
 
   local metadata = {
     cwd = cwd,
-    git_branch = branch,
     saved_at = os.time(),
     nvim_version = vim.version(),
   }
@@ -176,10 +149,15 @@ function M.save()
   return true
 end
 
--- Restore a session (session_id can be "cwd" or "cwd@branch")
+-- Restore a session (session_id can be cwd or --CONFIG--)
 function M.restore(session_id)
-  -- Extract base cwd for session paths
-  local base_cwd = session_id:match('^(.-)@') or session_id
+  -- Handle --CONFIG-- specially: open config directory
+  if session_id == '--CONFIG--' then
+    local config_dir = vim.fn.stdpath('config')
+    vim.cmd('cd ' .. vim.fn.fnameescape(config_dir))
+    vim.notify('Opened config directory: ' .. config_dir, vim.log.levels.INFO)
+    return true
+  end
 
   local session_dir = utils.get_session_dir()
   local encoded = utils.encode_path(session_id)
@@ -190,6 +168,9 @@ function M.restore(session_id)
     return false
   end
 
+  -- Close all buffers before restoring session
+  vim.cmd('silent! %bdelete')
+
   -- Source the vim session (restores EVERYTHING: buffers, windows, splits, tabs, cursor positions, folds, etc.)
   local ok, err = pcall(vim.cmd, 'source ' .. vim.fn.fnameescape(session_file))
   if not ok then
@@ -198,7 +179,7 @@ function M.restore(session_id)
   end
 
   -- Update MRU index
-  update_session_mru(base_cwd)
+  update_session_mru(session_id)
 
   state.current_session = session_id
   vim.notify('Session restored: ' .. utils.format_path_display(session_id), vim.log.levels.INFO)
@@ -263,17 +244,20 @@ function M.delete_current()
   return true
 end
 
--- Get list of all sessions in MRU order
+-- Get list of all sessions in MRU order, with --CONFIG-- always at the end
 function M.list()
   load_sessions_index()
-  return vim.deepcopy(state.sessions_index)
+  local sessions = vim.deepcopy(state.sessions_index)
+
+  -- Always append --CONFIG-- as the last item
+  table.insert(sessions, '--CONFIG--')
+
+  return sessions
 end
 
 -- Initialize session module
 function M.setup(opts)
   opts = opts or {}
-  state.git_branch_sessions = opts.git_branch_sessions or false
-
   utils.ensure_session_dir()
   load_sessions_index()
 end
