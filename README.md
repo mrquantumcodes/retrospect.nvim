@@ -2,67 +2,106 @@
 
 ![App Screenshot](https://github.com/mrquantumcodes/retrospect.nvim/blob/main/demo.gif)
 
-Retrospect.nvim is a Neovim plugin that simplifies session management by allowing you to save and recall your recent sessions effortlessly. It presents your saved sessions in a list, ordered by last usage, making it easy to jump back to your work exactly where you left off.
+**Zero-dependency, blazing-fast session management for Neovim.**
 
-# Features:
+Retrospect.nvim is a modern Neovim plugin that makes session management effortless. Save and restore your work instantly with automatic naming, MRU ordering, and perfect buffer state preservation.
 
-* Save your session from anywhere with a single keybinding without having to worry about where to save and what to name the session
-* Always have access to all sessions regardless of which directory you open neovim from
-* Sessions are sorted by order of usage so your last used session is always on top
-* Preserve the order of buffer usage automagically so plugins like Bufferchad.nvim and Telescope's Buffer View (MRU) still show the same order after restart, something that's not possible with the default session management
+## Features
 
-# What's new
+- **Zero dependencies** - Works out of the box with pure Neovim
+- **Automatic session naming** - No need to manually name sessions (based on CWD)
+- **MRU ordering** - Most recently used sessions always on top
+- **True buffer MRU preservation** - Maintains exact buffer usage order across restarts
+- **Lightning fast** - Optimized session save/restore with modern Neovim APIs
+- **Beautiful UI** - Clean floating window picker with intuitive keybindings
+- **Safe by design** - Prevents accidental config directory sessions
 
-* Telescope Integration
+## Requirements
 
+- Neovim >= 0.9.0 (tested on 0.11.2)
 
-## Packer Install Instruction
+## Installation
 
-To install Retrospect.nvim using Packer.nvim, add the following line to your Lua configuration:
+### lazy.nvim
 
 ```lua
-use {"mrquantumcodes/retrospect.nvim"}
+{
+  "mrquantumcodes/retrospect.nvim",
+  config = function()
+    require("retrospect").setup()
+  end,
+}
 ```
 
-
-
-## Setup Instruction
-
-To configure Retrospect.nvim, add the following code to your Lua Neovim configuration:
+### packer.nvim
 
 ```lua
-local retrospect = require('retrospect')
-retrospect.setup({
-  saveKey = "<leader>\\", -- The shortcut to save the session, default is leader+backslash(\)
-  loadKey = "<leader><BS>", -- The shortcut to load the session
-  style = "default", -- default (no dependencies) | modern (requires nui.nvim and dressing.nvim), telescope (requires telescope)
+use {
+  "mrquantumcodes/retrospect.nvim",
+  config = function()
+    require("retrospect").setup()
+  end,
+}
+```
+
+### vim-plug
+
+```vim
+Plug 'mrquantumcodes/retrospect.nvim'
+```
+
+Then in your `init.lua`:
+
+```lua
+require("retrospect").setup()
+```
+
+## Configuration
+
+```lua
+require("retrospect").setup({
+  save_key = "<leader>\\",  -- Keybinding to save session (default: <leader>\)
+  load_key = "<leader><BS>", -- Keybinding to load session (default: <leader><BS>)
 })
 ```
 
-You can customize the saveKey, loadKey and style options to fit your preferences.
-
+**Note:** Set either key to empty string `""` to disable that keybinding.
 
 ## Usage
 
-To save a session, use:
+### Keybindings (default)
 
-```lua
-retrospect.SaveSession()
+- `<leader>\` - Save current session
+- `<leader><BS>` - Open session picker
+
+### Session Picker Navigation
+
+- `<CR>` or `l` - Open selected session
+- `d` or `x` or `<Del>` - Delete selected session
+- `<Esc>` or `q` or `h` - Close picker
+
+### Commands
+
+```vim
+:SessionSave      " Save current session
+:SessionLoad      " Open session picker
+:SessionDelete    " Delete current session (with confirmation)
 ```
 
-To load a session, use:
+### Lua API
 
 ```lua
-retrospect.LoadSession()
+local retrospect = require("retrospect")
+
+-- Save current session
+retrospect.save_session()
+
+-- Load a session (opens picker)
+retrospect.load_session()
+
+-- Delete current session
+retrospect.delete_session()
 ```
-
-To delete the current session, use:
-
-```lua
-retrospect.DeleteSession()
-```
-
-Additionally, you can use the command :DelSession inside Neovim to delete the current session.
 
 
 
