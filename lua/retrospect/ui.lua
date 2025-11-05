@@ -3,6 +3,24 @@ local session = require('retrospect.session')
 local utils = require('retrospect.utils')
 local M = {}
 
+-- Format time ago (e.g., "2h ago", "3d ago")
+local function format_time_ago(timestamp)
+  local now = os.time()
+  local diff = now - timestamp
+
+  if diff < 60 then
+    return 'just now'
+  elseif diff < 3600 then
+    return math.floor(diff / 60) .. 'm ago'
+  elseif diff < 86400 then
+    return math.floor(diff / 3600) .. 'h ago'
+  elseif diff < 604800 then
+    return math.floor(diff / 86400) .. 'd ago'
+  else
+    return os.date('%b %d', timestamp)
+  end
+end
+
 -- Beautiful session picker with smooth UX
 function M.show_session_picker(on_select, on_delete)
   local sessions = session.list()
@@ -12,13 +30,28 @@ function M.show_session_picker(on_select, on_delete)
     return
   end
 
-  -- Create display items with formatting
+  -- Create display items with formatting and session info
   local display_items = {}
   local max_len = 0
-  for _, path in ipairs(sessions) do
-    local formatted = utils.format_path_display(path)
-    table.insert(display_items, formatted)
-    max_len = math.max(max_len, #formatted)
+
+  for _, session_id in ipairs(sessions) do
+    local formatted = utils.format_path_display(session_id)
+    local metadata = session.get_metadata(session_id)
+
+    -- Build info string
+    local info = ''
+    if metadata then
+      local time_ago = format_time_ago(metadata.saved_at)
+      info = ' │ ' .. time_ago
+
+      if metadata.git_branch then
+        info = info .. ' │ ' .. metadata.git_branch
+      end
+    end
+
+    local display_line = formatted .. info
+    table.insert(display_items, display_line)
+    max_len = math.max(max_len, vim.fn.strdisplaywidth(display_line))
   end
 
   -- Create buffer

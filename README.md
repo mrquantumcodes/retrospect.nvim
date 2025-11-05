@@ -9,9 +9,12 @@ Retrospect.nvim is a modern Neovim plugin that makes session management effortle
 ## Features
 
 - **Zero dependencies** - Works out of the box with pure Neovim
-- **Automatic session naming** - Sessions named by working directory, zero config
+- **Auto-restore last session** - Automatically restores your last session on startup
+- **Git branch-aware sessions** - Separate sessions per git branch (optional)
+- **Session info at a glance** - See last used time and git branch in the picker
 - **MRU session ordering** - Most recently used sessions always on top
 - **Complete state restoration** - Restores buffers, windows, splits, tabs, cursor positions, and folds
+- **Auto-save on file write** - Never lose your session state (optional)
 - **Lightning fast** - Pure vim sessions under the hood, blazing fast save/restore
 - **Beautiful UI** - Clean floating window picker with intuitive keybindings
 - **Safe by design** - Prevents accidental config directory sessions
@@ -57,9 +60,11 @@ require("retrospect").setup()
 
 ```lua
 require("retrospect").setup({
-  save_key = "<leader>\\",  -- Keybinding to save session (default: <leader>\)
-  load_key = "<leader><BS>", -- Keybinding to load session (default: <leader><BS>)
-  autosave = false,          -- Autosave session on every file write (default: false)
+  save_key = "<leader>\\",     -- Keybinding to save session (default: <leader>\)
+  load_key = "<leader><BS>",   -- Keybinding to load session (default: <leader><BS>)
+  autosave = false,            -- Autosave session on every file write (default: false)
+  autorestore = false,         -- Auto-restore last session on startup (default: false)
+  git_branch_sessions = false, -- Separate sessions per git branch (default: false)
 })
 ```
 
@@ -67,6 +72,8 @@ require("retrospect").setup({
 - `save_key` - Keybinding to save session. Set to `""` to disable.
 - `load_key` - Keybinding to load session. Set to `""` to disable.
 - `autosave` - When `true`, automatically saves session after every file write.
+- `autorestore` - When `true`, automatically restores last session when opening Neovim with no arguments.
+- `git_branch_sessions` - When `true`, creates separate sessions for each git branch. Perfect for managing feature branches!
 
 ## Usage
 
@@ -104,9 +111,6 @@ retrospect.load_session()
 -- Delete current session
 retrospect.delete_session()
 
--- Open config directory
-retrospect.open_config()
-```
 
 
 
