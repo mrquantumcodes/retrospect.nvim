@@ -14,7 +14,6 @@ local function get_session_paths(cwd)
   local encoded = utils.encode_path(cwd)
   return {
     vim_session = session_dir .. '/' .. encoded .. '.vim',
-    mru_buffers = session_dir .. '/' .. encoded .. '.mru',
     metadata = session_dir .. '/' .. encoded .. '.meta',
   }
 end
@@ -106,13 +105,7 @@ function M.save()
 
   local paths = get_session_paths(cwd)
 
-  -- Save MRU buffer order BEFORE creating vim session
-  local buffer_paths = utils.get_buffer_paths_mru()
-  if #buffer_paths > 0 then
-    vim.fn.writefile(buffer_paths, paths.mru_buffers)
-  end
-
-  -- Save vim session
+  -- Save vim session (handles everything: buffers, windows, splits, cursor positions, folds, etc.)
   vim.cmd('mksession! ' .. vim.fn.fnameescape(paths.vim_session))
 
   -- Save metadata
@@ -126,38 +119,6 @@ function M.save()
   return true
 end
 
--- Restore buffers in MRU order
-local function restore_buffer_mru(cwd)
-  local paths = get_session_paths(cwd)
-
-  if vim.fn.filereadable(paths.mru_buffers) == 0 then
-    return
-  end
-
-  local mru_paths = vim.fn.readfile(paths.mru_buffers)
-
-  -- Close all current buffers except the first one (session will handle it)
-  local current_bufs = vim.api.nvim_list_bufs()
-  for _, bufnr in ipairs(current_bufs) do
-    if vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].buflisted then
-      vim.api.nvim_buf_delete(bufnr, { force = true })
-    end
-  end
-
-  -- Open buffers in reverse MRU order (so most recent ends up on top)
-  for i = #mru_paths, 1, -1 do
-    local path = mru_paths[i]
-    if vim.fn.filereadable(path) == 1 then
-      vim.cmd('badd ' .. vim.fn.fnameescape(path))
-    end
-  end
-
-  -- Switch to the most recently used buffer
-  if #mru_paths > 0 and vim.fn.filereadable(mru_paths[1]) == 1 then
-    vim.cmd('buffer ' .. vim.fn.fnameescape(mru_paths[1]))
-  end
-end
-
 -- Restore a session
 function M.restore(cwd)
   local paths = get_session_paths(cwd)
@@ -167,17 +128,12 @@ function M.restore(cwd)
     return false
   end
 
-  -- Source the vim session
+  -- Source the vim session (restores EVERYTHING: buffers, windows, splits, tabs, cursor positions, folds, etc.)
   local ok, err = pcall(vim.cmd, 'source ' .. vim.fn.fnameescape(paths.vim_session))
   if not ok then
     vim.notify('Failed to restore session: ' .. tostring(err), vim.log.levels.ERROR)
     return false
   end
-
-  -- Restore buffer MRU order
-  vim.schedule(function()
-    restore_buffer_mru(cwd)
-  end)
 
   -- Update MRU index
   update_session_mru(cwd)

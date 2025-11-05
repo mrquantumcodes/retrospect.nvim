@@ -9,10 +9,10 @@ Retrospect.nvim is a modern Neovim plugin that makes session management effortle
 ## Features
 
 - **Zero dependencies** - Works out of the box with pure Neovim
-- **Automatic session naming** - No need to manually name sessions (based on CWD)
-- **MRU ordering** - Most recently used sessions always on top
-- **True buffer MRU preservation** - Maintains exact buffer usage order across restarts
-- **Lightning fast** - Optimized session save/restore with modern Neovim APIs
+- **Automatic session naming** - Sessions named by working directory, zero config
+- **MRU session ordering** - Most recently used sessions always on top
+- **Complete state restoration** - Restores buffers, windows, splits, tabs, cursor positions, and folds
+- **Lightning fast** - Pure vim sessions under the hood, blazing fast save/restore
 - **Beautiful UI** - Clean floating window picker with intuitive keybindings
 - **Safe by design** - Prevents accidental config directory sessions
 
@@ -59,10 +59,14 @@ require("retrospect").setup()
 require("retrospect").setup({
   save_key = "<leader>\\",  -- Keybinding to save session (default: <leader>\)
   load_key = "<leader><BS>", -- Keybinding to load session (default: <leader><BS>)
+  autosave = false,          -- Autosave session on every file write (default: false)
 })
 ```
 
-**Note:** Set either key to empty string `""` to disable that keybinding.
+**Options:**
+- `save_key` - Keybinding to save session. Set to `""` to disable.
+- `load_key` - Keybinding to load session. Set to `""` to disable.
+- `autosave` - When `true`, automatically saves session after every file write.
 
 ## Usage
 
@@ -83,6 +87,7 @@ require("retrospect").setup({
 :SessionSave      " Save current session
 :SessionLoad      " Open session picker
 :SessionDelete    " Delete current session (with confirmation)
+:SessionConfig    " Open Neovim config directory
 ```
 
 ### Lua API
@@ -98,6 +103,9 @@ retrospect.load_session()
 
 -- Delete current session
 retrospect.delete_session()
+
+-- Open config directory
+retrospect.open_config()
 ```
 
 
