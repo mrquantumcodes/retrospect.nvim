@@ -115,7 +115,7 @@ function M.save()
   update_session_mru(cwd)
 
   state.current_session = cwd
-  vim.notify('Session saved: ' .. utils.format_path_display(cwd), vim.log.levels.INFO)
+  -- vim.notify('Session saved: ' .. utils.format_path_display(cwd), vim.log.levels.INFO)
   return true
 end
 
