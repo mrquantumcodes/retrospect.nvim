@@ -1,6 +1,6 @@
 # Retrospect.nvim
 
-![App Screenshot](https://github.com/mrquantumcodes/retrospect.nvim/blob/main/demo.gif)
+![App Screenshot](https://github.com/mrquantumcodes/retrospect.nvim/blob/main/screenshot.png)
 
 **Zero-dependency, blazing-fast session management for Neovim with fuzzy search.**
 
